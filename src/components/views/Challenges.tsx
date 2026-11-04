@@ -47,7 +47,7 @@ export default function Challenges() {
   const [filter, setFilter] = useState<string>('all');
   const [particles, setParticles] = useState<ParticleData[]>([]);
   const [celebrating, setCelebrating] = useState<string | null>(null);
-  const [toastMsg, setToastMsg] = useState<{ text: string; points: number } | null>(null);
+  const [toastMsg, setToastMsg] = useState<{ text: string; points: number; co2Saved?: number } | null>(null);
 
   const filtered = filter === 'all'
     ? CHALLENGES
@@ -72,7 +72,11 @@ export default function Challenges() {
       setParticles((p) => [...p, ...newParticles]);
 
       // Toast
-      setToastMsg({ text: `${challenge.title} completed! 🎉`, points: result.points });
+      setToastMsg({
+        text: `${challenge.title} completed! 🎉`,
+        points: result.points,
+        co2Saved: result.co2Saved,
+      });
 
       setTimeout(() => {
         setCelebrating(null);
@@ -114,7 +118,9 @@ export default function Challenges() {
             </span>
             <div>
               <p className="text-sm font-semibold text-forest-800 dark:text-forest-200">{toastMsg.text}</p>
-              <p className="text-xs text-forest-600 dark:text-forest-400">+{toastMsg.points} green points earned</p>
+              <p className="text-xs text-forest-600 dark:text-forest-400">
+                +{toastMsg.points} green points &middot; -{toastMsg.co2Saved ?? 0} kg CO₂ prevented
+              </p>
             </div>
           </motion.div>
         )}

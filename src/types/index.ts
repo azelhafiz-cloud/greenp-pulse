@@ -49,7 +49,31 @@ export interface Badge {
 export interface PlantHealth {
   status: 'thriving' | 'healthy' | 'needs-water' | 'wilting';
   message: string;
+  personalityQuote: string;
   daysSinceLastAction: number;
+  leafCount: number;
+  vitalityPct: number;
+}
+
+export interface PlantStage {
+  level: number;
+  name: string;
+  stageName: string;
+  threshold: number;
+  description: string;
+  specialForm?: boolean;
+  formTitle?: string;
+}
+
+export interface ClimatePulseData {
+  co2Ppm: number;
+  date: string;
+  source: string;
+  isEstimate: boolean;
+  changeFromLastYear: number;
+  preIndustrialBaseline: number;
+  planetaryBoundary: number;
+  cachedAt: string;
 }
 
 export interface QuickAction {
@@ -74,6 +98,30 @@ export interface WeeklySummary {
   motivationalLine: string;
 }
 
+export type PlantSkinId = 'emerald' | 'autumn' | 'sakura' | 'midnight' | 'celestial';
+
+export interface CollectibleLeaf {
+  id: string;
+  name: string;
+  rarity: 'common' | 'uncommon' | 'rare' | 'legendary';
+  icon: string;
+  color: string;
+  description: string;
+  discoveryHint: string;
+  unlockedAt?: string;
+}
+
+export interface ForestFlora {
+  id: string;
+  name: string;
+  stageName: string;
+  levelRequired: number;
+  icon: string;
+  color: string;
+  description: string;
+  unlocked: boolean;
+}
+
 export interface UserStats {
   totalPoints: number;
   totalCo2SavedKg: number;
@@ -87,6 +135,16 @@ export interface UserStats {
   onboardingComplete: boolean;
   lastWeeklySummaryShown?: string; // date string
   createdAt: string;
+  leavesGrown?: number;
+  viewedClimateData?: boolean;
+  revivedPlantCount?: number;
+  atmosphereEnabled?: boolean;
+  activeSkin?: PlantSkinId;
+  ascensionTier?: number;
+  collectedLeaves?: string[];
+  lastNurturedDate?: string;
+  lastNurturedAction?: string;
+  companionAffection?: number;
 }
 
 export interface KnowledgeCard {

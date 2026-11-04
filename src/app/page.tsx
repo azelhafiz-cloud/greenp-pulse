@@ -14,6 +14,7 @@ import Impact from '@/components/views/Impact';
 import Badges from '@/components/views/Badges';
 import WeeklySummaryModal from '@/components/WeeklySummaryModal';
 import BadgeNotification from '@/components/BadgeNotification';
+import ForestAtmosphere from '@/components/ForestAtmosphere';
 
 export default function HomePage() {
   const { stats, completeOnboarding } = useApp();
@@ -51,7 +52,10 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-[var(--color-bg)] transition-theme">
+    <div className="min-h-screen bg-[var(--color-bg)] transition-theme relative overflow-x-hidden">
+      {/* Forest Atmosphere: Ambient falling leaves, motes & time-of-day sky */}
+      <ForestAtmosphere />
+
       <NavBar activeTab={activeTab} onTabChange={setActiveTab} />
 
       {/* Global overlays */}

@@ -23,6 +23,11 @@ const getBadgeColors = (colorClass: string): [string, string] => {
     'from-lime-400 to-forest-500':    ['#a3e635', '#22c55e'],
     'from-emerald-400 to-forest-600': ['#34d399', '#16a34a'],
     'from-forest-500 to-mint-500':    ['#22c55e', '#14b8a6'],
+    'from-emerald-400 to-teal-600':   ['#34d399', '#0d9488'],
+    'from-amber-400 to-rose-500':     ['#fbbf24', '#f43f5e'],
+    'from-teal-400 to-emerald-600':   ['#2dd4bf', '#059669'],
+    'from-indigo-400 to-cyan-600':    ['#818cf8', '#06b6d4'],
+    'from-emerald-400 to-teal-500':   ['#34d399', '#14b8a6'],
   };
   return map[colorClass] ?? ['#22c55e', '#16a34a'];
 };

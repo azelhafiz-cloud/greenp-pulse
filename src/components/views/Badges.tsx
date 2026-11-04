@@ -1,12 +1,12 @@
 'use client';
 
-import React from 'react';
-import { motion } from 'framer-motion';
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '@/context/AppContext';
 import { BADGE_DEFINITIONS } from '@/data';
 import { getPlantLevel } from '@/lib/storage';
 
-// Map badge color strings to actual hex values
+// Map badge color strings to hex pairs
 const getBadgeColors = (colorClass: string): [string, string] => {
   const map: Record<string, [string, string]> = {
     'from-forest-400 to-forest-600': ['#4ade80', '#16a34a'],
@@ -24,6 +24,11 @@ const getBadgeColors = (colorClass: string): [string, string] => {
     'from-lime-400 to-forest-500':    ['#a3e635', '#22c55e'],
     'from-emerald-400 to-forest-600': ['#34d399', '#16a34a'],
     'from-forest-500 to-mint-500':    ['#22c55e', '#14b8a6'],
+    'from-emerald-400 to-teal-600':   ['#34d399', '#0d9488'],
+    'from-amber-400 to-rose-500':     ['#fbbf24', '#f43f5e'],
+    'from-teal-400 to-emerald-600':   ['#2dd4bf', '#059669'],
+    'from-indigo-400 to-cyan-600':    ['#818cf8', '#06b6d4'],
+    'from-emerald-400 to-teal-500':   ['#34d399', '#14b8a6'],
   };
   return map[colorClass] ?? ['#22c55e', '#16a34a'];
 };
@@ -31,6 +36,8 @@ const getBadgeColors = (colorClass: string): [string, string] => {
 export default function Badges() {
   const { stats } = useApp();
   const plantInfo = getPlantLevel(stats);
+  const [filter, setFilter] = useState<'all' | 'unlocked' | 'locked'>('all');
+  const [selectedBadge, setSelectedBadge] = useState<any | null>(null);
 
   const earned = new Set(stats.earnedBadges);
   const badgesWithState = BADGE_DEFINITIONS.map((b) => ({
@@ -49,11 +56,12 @@ export default function Badges() {
   const totalBadges = BADGE_DEFINITIONS.length;
   const progressPct = Math.round((earnedCount / totalBadges) * 100);
 
-  // Next easiest badge to preview if none earned
-  const nextBadge = BADGE_DEFINITIONS.find((b) => !earned.has(b.id)) ?? BADGE_DEFINITIONS[0];
-  const [nextStartColor, nextEndColor] = getBadgeColors(nextBadge.color);
+  const filteredBadges = badgesWithState.filter((b) => {
+    if (filter === 'unlocked') return b.earned;
+    if (filter === 'locked') return !b.earned;
+    return true;
+  });
 
-  // Helper for relative date of earned badge
   const getRelativeDate = (badgeId: string): string => {
     const allDates = [
       ...stats.activities.map((a) => a.date),
@@ -75,114 +83,84 @@ export default function Badges() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-6 pb-24 md:pb-8">
-      {/* 1. Page Header */}
+    <div className="max-w-4xl mx-auto px-4 py-6 pb-28 md:pb-12">
+      {/* 1. Header */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         className="mb-6 flex items-center justify-between flex-wrap gap-3"
       >
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-forest-100 dark:bg-dark-muted flex items-center justify-center">
-            <span
-              className="material-symbols-rounded text-forest-700 dark:text-forest-300"
-              style={{ fontSize: '24px' }}
-            >
+          <div className="w-11 h-11 rounded-2xl bg-forest-100 dark:bg-dark-muted flex items-center justify-center text-forest-700 dark:text-forest-300">
+            <span className="material-symbols-rounded" style={{ fontSize: '26px' }}>
               military_tech
             </span>
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-forest-800 dark:text-forest-200">Badges</h1>
-            <p className="text-sm text-sage-500 dark:text-sage-400">Your green milestones</p>
+            <h1 className="text-2xl font-bold text-forest-900 dark:text-forest-100">
+              Badge Collection
+            </h1>
+            <p className="text-xs text-sage-500 dark:text-sage-400">
+              Celebrate your milestone achievements and sustainability habits
+            </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-forest-50 dark:bg-dark-card border border-forest-100 dark:border-dark-border text-xs font-semibold text-forest-700 dark:text-forest-300">
-          <span className="material-symbols-rounded text-forest-600 dark:text-forest-400" style={{ fontSize: '16px' }}>
-            yard
-          </span>
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-forest-50 dark:bg-dark-card border border-forest-100 dark:border-dark-border text-xs font-bold text-forest-800 dark:text-forest-200">
+          <span className="material-symbols-rounded text-forest-600 text-sm">nature</span>
           Level {plantInfo.level} · {plantInfo.name}
         </div>
       </motion.div>
 
-      {/* 2. Summary Row */}
+      {/* 2. Progress Banner */}
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.05 }}
-        className="bg-white dark:bg-dark-card rounded-2xl p-5 shadow-soft border border-forest-100 dark:border-dark-border mb-6"
+        className="bg-white dark:bg-dark-card rounded-3xl p-5 shadow-soft border border-forest-100 dark:border-dark-border mb-6"
       >
         <div className="flex items-center justify-between mb-2.5">
-          <span className="text-sm font-semibold text-forest-800 dark:text-forest-200">
-            {earnedCount} / {totalBadges} Badges Earned
+          <span className="text-sm font-bold text-forest-900 dark:text-forest-100">
+            {earnedCount} of {totalBadges} Badges Unlocked
           </span>
-          <span className="text-xs font-bold text-forest-600 dark:text-forest-400">
-            {progressPct}%
+          <span className="text-xs font-extrabold text-forest-600 dark:text-forest-400">
+            {progressPct}% Completed
           </span>
         </div>
-        <div className="h-3 rounded-full bg-forest-50 dark:bg-dark-muted overflow-hidden">
+        <div className="h-3 rounded-full bg-forest-50 dark:bg-dark-muted overflow-hidden relative">
           <motion.div
-            className="h-full rounded-full bg-gradient-to-r from-forest-500 to-mint-500"
+            className="h-full rounded-full bg-gradient-to-r from-forest-500 via-mint-500 to-emerald-400"
             initial={{ width: 0 }}
             animate={{ width: `${progressPct}%` }}
-            transition={{ duration: 1, ease: 'easeOut', delay: 0.1 }}
+            transition={{ duration: 1, ease: 'easeOut' }}
           />
+        </div>
+
+        {/* Filter Pills */}
+        <div className="flex items-center gap-2 mt-4 pt-3 border-t border-forest-50 dark:border-dark-border">
+          {(['all', 'unlocked', 'locked'] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setFilter(tab)}
+              className={`px-3 py-1 rounded-xl text-xs font-semibold capitalize transition-all ${
+                filter === tab
+                  ? 'bg-forest-600 text-white shadow-xs'
+                  : 'bg-forest-50 dark:bg-dark-muted text-sage-600 dark:text-sage-400 hover:text-forest-700'
+              }`}
+            >
+              {tab === 'all'
+                ? `All (${totalBadges})`
+                : tab === 'unlocked'
+                ? `Unlocked (${earnedCount})`
+                : `Locked (${totalBadges - earnedCount})`}
+            </button>
+          ))}
         </div>
       </motion.div>
 
-      {/* 4. Empty State (if no badges earned yet) */}
-      {earnedCount === 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="bg-white dark:bg-dark-card rounded-2xl p-6 border border-dashed border-forest-200 dark:border-dark-border text-center mb-6 shadow-soft"
-        >
-          <div className="w-14 h-14 rounded-2xl bg-forest-50 dark:bg-dark-muted mx-auto mb-3 flex items-center justify-center">
-            <span
-              className="material-symbols-rounded text-forest-600 dark:text-forest-400"
-              style={{ fontSize: '32px' }}
-            >
-              yard
-            </span>
-          </div>
-          <h3 className="text-base font-bold text-forest-800 dark:text-forest-200">
-            No Badges Earned Yet
-          </h3>
-          <p className="text-sm text-sage-500 dark:text-sage-400 mt-1 max-w-sm mx-auto">
-            Complete challenges to earn your first badge!
-          </p>
-
-          {/* Preview of next easiest badge */}
-          <div className="mt-4 p-3.5 rounded-xl bg-forest-50/60 dark:bg-dark-muted/40 border border-forest-100 dark:border-dark-border/60 max-w-sm mx-auto text-left flex items-center gap-3">
-            <div
-              className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-xs"
-              style={{
-                background: `linear-gradient(135deg, ${nextStartColor}, ${nextEndColor})`,
-              }}
-            >
-              <span className="material-symbols-rounded text-white" style={{ fontSize: '20px' }}>
-                {nextBadge.icon}
-              </span>
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-bold text-forest-600 dark:text-forest-400 uppercase tracking-wider">
-                Easiest to unlock next
-              </p>
-              <p className="text-xs font-bold text-forest-800 dark:text-forest-200 truncate">
-                {nextBadge.title}
-              </p>
-              <p className="text-[11px] text-sage-500 dark:text-sage-400 truncate">
-                {nextBadge.description}
-              </p>
-            </div>
-          </div>
-        </motion.div>
-      )}
-
       {/* 3. Badge Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-        {badgesWithState.map((badge, index) => {
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 gap-4">
+        {filteredBadges.map((badge, index) => {
           const [startColor, endColor] = getBadgeColors(badge.color);
 
           return (
@@ -190,33 +168,34 @@ export default function Badges() {
               key={badge.id}
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.05 }}
-              className={`rounded-2xl p-5 border transition-all duration-200 flex flex-col justify-between ${
+              transition={{ delay: index * 0.03 }}
+              onClick={() => setSelectedBadge(badge)}
+              whileHover={{ y: -3 }}
+              className={`cursor-pointer rounded-2xl p-5 border transition-all duration-200 flex flex-col justify-between ${
                 badge.earned
-                  ? 'bg-white dark:bg-dark-card border-forest-100 dark:border-dark-border shadow-soft'
-                  : 'bg-sage-50/50 dark:bg-dark-card/50 border-sage-100 dark:border-dark-border/50'
+                  ? 'bg-white dark:bg-dark-card border-forest-100 dark:border-dark-border shadow-soft hover:shadow-soft-md'
+                  : 'bg-sage-50/40 dark:bg-dark-card/40 border-sage-100 dark:border-dark-border/40 hover:border-forest-200'
               }`}
             >
               <div>
-                {/* Icon circle */}
-                <div className="relative inline-block">
+                {/* Icon Container */}
+                <div className="relative inline-block mb-3">
                   <div
-                    className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-xs ${
-                      !badge.earned ? 'bg-sage-200 dark:bg-dark-muted' : ''
+                    className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-xs ${
+                      !badge.earned ? 'bg-sage-200/70 dark:bg-dark-muted' : ''
                     }`}
                     style={
                       badge.earned
                         ? {
                             background: `linear-gradient(135deg, ${startColor}, ${endColor})`,
+                            boxShadow: `0 4px 14px ${startColor}40`,
                           }
                         : undefined
                     }
                   >
                     <span
                       className={`material-symbols-rounded ${
-                        badge.earned
-                          ? 'text-white'
-                          : 'text-sage-400 dark:text-sage-500'
+                        badge.earned ? 'text-white' : 'text-sage-400 dark:text-sage-500'
                       }`}
                       style={{ fontSize: '24px' }}
                     >
@@ -224,7 +203,7 @@ export default function Badges() {
                     </span>
                   </div>
 
-                  {/* Corner lock overlay for locked badges */}
+                  {/* Corner lock indicator */}
                   {!badge.earned && (
                     <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-sage-300 dark:bg-dark-surface border border-white dark:border-dark-card flex items-center justify-center shadow-xs">
                       <span
@@ -237,31 +216,87 @@ export default function Badges() {
                   )}
                 </div>
 
-                {/* Badge title & description */}
-                <h3 className="font-bold text-forest-800 dark:text-forest-200 text-sm mt-3 leading-tight">
+                <h3 className="font-bold text-forest-900 dark:text-forest-100 text-sm leading-tight">
                   {badge.title}
                 </h3>
-                <p className="text-xs text-sage-500 dark:text-sage-400 mt-1 leading-relaxed">
+                <p className="text-xs text-sage-500 dark:text-sage-400 mt-1 leading-relaxed line-clamp-2">
                   {badge.description}
                 </p>
               </div>
 
-              {/* Earned date or Locked status */}
-              <div>
+              <div className="mt-3 pt-2 border-t border-forest-50/80 dark:border-dark-border/40 flex items-center justify-between">
                 {badge.earned ? (
-                  <p className="text-[10px] text-forest-500 dark:text-forest-400 mt-2 font-medium">
+                  <span className="text-[10px] font-bold text-forest-600 dark:text-forest-400 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-forest-500" />
                     Earned {getRelativeDate(badge.id)}
-                  </p>
+                  </span>
                 ) : (
-                  <p className="text-[10px] text-sage-400 mt-2">
-                    Locked
-                  </p>
+                  <span className="text-[10px] font-semibold text-sage-400">Locked Milestone</span>
                 )}
+                <span className="material-symbols-rounded text-sage-400 text-xs">info</span>
               </div>
             </motion.div>
           );
         })}
       </div>
+
+      {/* 4. Badge Details Modal */}
+      <AnimatePresence>
+        {selectedBadge && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setSelectedBadge(null);
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="max-w-sm w-full bg-white dark:bg-dark-card rounded-3xl p-6 shadow-2xl border border-forest-100 dark:border-dark-border text-center"
+            >
+              <div
+                className="w-16 h-16 rounded-3xl mx-auto mb-4 flex items-center justify-center shadow-lg"
+                style={{
+                  background: selectedBadge.earned
+                    ? `linear-gradient(135deg, ${getBadgeColors(selectedBadge.color)[0]}, ${getBadgeColors(selectedBadge.color)[1]})`
+                    : '#94a3b8',
+                }}
+              >
+                <span className="material-symbols-rounded text-white text-3xl">
+                  {selectedBadge.icon}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-center gap-1.5 mb-1">
+                <span
+                  className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                    selectedBadge.earned
+                      ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                      : 'bg-slate-100 text-slate-600 dark:bg-dark-muted dark:text-slate-400'
+                  }`}
+                >
+                  {selectedBadge.earned ? 'Unlocked Milestone' : 'Locked Milestone'}
+                </span>
+              </div>
+
+              <h3 className="text-lg font-bold text-forest-900 dark:text-forest-100 mb-1">
+                {selectedBadge.title}
+              </h3>
+              <p className="text-xs text-sage-600 dark:text-sage-300 leading-relaxed mb-4">
+                {selectedBadge.description}
+              </p>
+
+              <button
+                onClick={() => setSelectedBadge(null)}
+                className="w-full py-2.5 rounded-xl bg-forest-600 text-white font-bold text-xs hover:bg-forest-700 transition-colors"
+              >
+                Close
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

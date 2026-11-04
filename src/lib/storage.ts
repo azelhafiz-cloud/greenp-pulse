@@ -1,7 +1,7 @@
 'use client';
 
 import { UserStats, EcoActivity, PlantHealth, WeeklySummary } from '@/types';
-import { DAILY_CO2_TARGET_KG, MOTIVATIONAL_LINES } from '@/data';
+import { DAILY_CO2_TARGET_KG, MOTIVATIONAL_LINES, PLANT_STAGES, PLANT_PERSONALITY_QUOTES } from '@/data';
 
 const STORAGE_KEY = 'greenpulse_user_stats';
 
@@ -25,8 +25,18 @@ export function loadStats(): UserStats {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return defaultStats;
     const parsed = JSON.parse(raw) as UserStats;
-    // Migrate: ensure earnedBadges exists for old saves
+    // Migrate: ensure arrays and fields exist for old saves
     if (!parsed.earnedBadges) parsed.earnedBadges = [];
+    if (!parsed.collectedLeaves) parsed.collectedLeaves = [];
+    if (!parsed.activeSkin) parsed.activeSkin = 'emerald';
+    if (!parsed.atmosphereEnabled) parsed.atmosphereEnabled = true;
+
+    // Consistency fix: if totalCo2SavedKg is 0 but user has completed challenges or activities, repair totalCo2SavedKg
+    const activityCo2 = (parsed.activities || []).reduce((sum, a) => sum + (a.co2Kg || 0), 0);
+    const challengeCo2 = (parsed.completedChallenges || []).length * 1.5;
+    if ((parsed.totalCo2SavedKg === 0 || !parsed.totalCo2SavedKg) && (activityCo2 > 0 || challengeCo2 > 0)) {
+      parsed.totalCo2SavedKg = parseFloat((activityCo2 + challengeCo2).toFixed(2));
+    }
     return parsed;
   } catch {
     return defaultStats;
@@ -83,19 +93,17 @@ export function getWeeklyChartData(stats: UserStats) {
 export function getPlantLevel(stats: UserStats): {
   level: number;
   name: string;
+  stageName: string;
   progress: number;
   nextThreshold: number;
-  stageName: string;
+  description: string;
+  formTitle: string;
+  isSpecial: boolean;
+  ascensionTier: number;
+  isAscended: boolean;
 } {
   const points = stats.totalPoints;
-  const levels = [
-    { threshold: 0,    name: 'Seed',              stageName: 'Just planted',      level: 1 },
-    { threshold: 100,  name: 'Sprout',             stageName: 'First leaves',      level: 2 },
-    { threshold: 250,  name: 'Young Plant',         stageName: 'Growing strong',    level: 3 },
-    { threshold: 500,  name: 'Healthy Plant',       stageName: 'Thriving',          level: 4 },
-    { threshold: 900,  name: 'Flourishing Tree',    stageName: 'Standing tall',     level: 5 },
-    { threshold: 1400, name: 'Ancient Forest',      stageName: 'A living legend',   level: 6 },
-  ];
+  const levels = PLANT_STAGES;
 
   let current = levels[0];
   let nextThreshold = levels[1].threshold;
@@ -103,20 +111,36 @@ export function getPlantLevel(stats: UserStats): {
   for (let i = 0; i < levels.length; i++) {
     if (points >= levels[i].threshold) {
       current = levels[i];
-      nextThreshold = i + 1 < levels.length ? levels[i + 1].threshold : levels[i].threshold + 500;
+      nextThreshold = i + 1 < levels.length ? levels[i + 1].threshold : levels[i].threshold + 800;
     }
   }
 
   const prevThreshold = current.threshold;
   const range = nextThreshold - prevThreshold;
-  const progress = range > 0 ? Math.min(100, ((points - prevThreshold) / range) * 100) : 100;
+  const progress = range > 0 ? Math.min(100, Math.max(0, ((points - prevThreshold) / range) * 100)) : 100;
+
+  // Endless Ascension system once max base stage (3500+ pts) is achieved
+  const maxThreshold = levels[levels.length - 1].threshold;
+  const ascensionTier = points >= maxThreshold ? Math.floor((points - maxThreshold) / 800) + 1 : 0;
+  const isAscended = ascensionTier > 0;
+
+  const formTitle = isAscended
+    ? `✦ Celestial Biosphere (Ascension Tier ${ascensionTier})`
+    : current.formTitle;
 
   return {
-    level: current.level,
-    name: current.name,
-    stageName: current.stageName,
-    progress,
-    nextThreshold,
+    level: isAscended ? 8 + ascensionTier : current.level,
+    name: isAscended ? `Celestial Grove ✦ Tier ${ascensionTier}` : current.name,
+    stageName: isAscended ? `Ascended Legend · Tier ${ascensionTier}` : current.stageName,
+    progress: isAscended ? Math.min(100, ((points - (maxThreshold + (ascensionTier - 1) * 800)) / 800) * 100) : progress,
+    nextThreshold: isAscended ? maxThreshold + ascensionTier * 800 : nextThreshold,
+    description: isAscended
+      ? `A transcendent cosmic biosphere blooming with eternal starlight and infinite ecological mastery.`
+      : current.description,
+    formTitle,
+    isSpecial: Boolean(current.isSpecial || isAscended),
+    ascensionTier,
+    isAscended,
   };
 }
 
@@ -133,11 +157,15 @@ export function isChallengeCompletedToday(stats: UserStats, challengeId: string)
   );
 }
 
-// ─── Plant Health ─────────────────────────────────────────────────────────────
+// ─── Plant Health & Personality ───────────────────────────────────────────────
 
 export function getPlantHealth(stats: UserStats): PlantHealth {
   const today = new Date();
   const todayStr = today.toISOString().split('T')[0];
+  const hour = today.getHours();
+
+  // Leaf count based on points + activities
+  const leafCount = Math.max(2, Math.floor(stats.totalPoints / 18) + stats.activities.length * 2 + 4);
 
   // Find last action date (activity OR challenge completion)
   const allDates = [
@@ -147,11 +175,16 @@ export function getPlantHealth(stats: UserStats): PlantHealth {
 
   const lastActionDate = allDates[0];
 
+  const pickQuote = (arr: string[]) => arr[Math.floor((stats.totalPoints + stats.activities.length) % arr.length)];
+
   if (!lastActionDate) {
     return {
       status: 'needs-water',
       message: 'Your plant is waiting to grow. Log your first action! 🌱',
+      personalityQuote: 'A single seed holds infinite possibilities. Ready to grow together? 🌱',
       daysSinceLastAction: 0,
+      leafCount,
+      vitalityPct: 60,
     };
   }
 
@@ -159,37 +192,87 @@ export function getPlantHealth(stats: UserStats): PlantHealth {
   const diff = Math.floor((today.getTime() - last.getTime()) / (1000 * 60 * 60 * 24));
 
   if (diff === 0) {
-    // Check how much activity today
     const todayActs = stats.activities.filter((a) => a.date === todayStr);
     const todayChallenges = stats.completedChallenges.filter((c) => c.date === todayStr);
     const actCount = todayActs.length + todayChallenges.length;
 
     if (actCount >= 3) {
-      return { status: 'thriving', message: 'Your plant is absolutely thriving! 🌳✨', daysSinceLastAction: 0 };
+      return {
+        status: 'thriving',
+        message: 'Your plant is absolutely thriving! 🌳✨',
+        personalityQuote: pickQuote(PLANT_PERSONALITY_QUOTES.thriving),
+        daysSinceLastAction: 0,
+        leafCount: leafCount + 6,
+        vitalityPct: 100,
+      };
     }
-    return { status: 'healthy', message: 'Your plant is healthy and growing. 🌿', daysSinceLastAction: 0 };
+
+    const timeGreeting =
+      hour < 12
+        ? pickQuote(PLANT_PERSONALITY_QUOTES.morning)
+        : hour < 18
+        ? pickQuote(PLANT_PERSONALITY_QUOTES.afternoon)
+        : pickQuote(PLANT_PERSONALITY_QUOTES.evening);
+
+    return {
+      status: 'healthy',
+      message: 'Your plant is healthy and actively growing. 🌿',
+      personalityQuote: timeGreeting || pickQuote(PLANT_PERSONALITY_QUOTES.healthy),
+      daysSinceLastAction: 0,
+      leafCount,
+      vitalityPct: 85,
+    };
   }
 
   if (diff === 1) {
-    return { status: 'healthy', message: 'Your plant misses you — do a green action today! 💚', daysSinceLastAction: 1 };
+    return {
+      status: 'healthy',
+      message: 'Your plant is resting and ready for today! 💚',
+      personalityQuote: pickQuote(PLANT_PERSONALITY_QUOTES.healthy),
+      daysSinceLastAction: 1,
+      leafCount,
+      vitalityPct: 80,
+    };
   }
 
   if (diff <= 3) {
-    return { status: 'needs-water', message: `Your plant needs care — ${diff} days without action. 💧`, daysSinceLastAction: diff };
+    return {
+      status: 'needs-water',
+      message: `Your plant needs care — ${diff} days without an eco action. 💧`,
+      personalityQuote: pickQuote(PLANT_PERSONALITY_QUOTES['needs-water']),
+      daysSinceLastAction: diff,
+      leafCount: Math.max(2, leafCount - 4),
+      vitalityPct: 50,
+    };
   }
 
-  return { status: 'wilting', message: `Your plant is wilting after ${diff} days. Water it now! 🥺`, daysSinceLastAction: diff };
+  return {
+    status: 'wilting',
+    message: `Your plant is slightly wilted after ${diff} days. Water it with an action! 🥺`,
+    personalityQuote: pickQuote(PLANT_PERSONALITY_QUOTES.wilting),
+    daysSinceLastAction: diff,
+    leafCount: Math.max(1, leafCount - 8),
+    vitalityPct: 25,
+  };
 }
 
 // ─── Impact Summary ───────────────────────────────────────────────────────────
 
 export function getImpactSummary(stats: UserStats) {
-  const treesEquivalent = Math.floor(stats.totalCo2SavedKg / 22);
-  const drivingKmAvoided = Math.floor(stats.totalCo2SavedKg / 0.192);
-  const phonesCharged = Math.floor(stats.totalCo2SavedKg / 0.005); // ~5g CO2 per phone charge
-  const lightbulbHours = Math.floor(stats.totalCo2SavedKg / 0.01); // ~10g per LED hour
+  // Ensure real CO2 is counted even if totalCo2SavedKg was missed
+  const effectiveCo2 = stats.totalCo2SavedKg > 0
+    ? stats.totalCo2SavedKg
+    : (stats.activities || []).reduce((sum, a) => sum + (a.co2Kg || 0), 0) + (stats.completedChallenges || []).length * 1.5;
+
+  const treesEquivalent = Math.floor(effectiveCo2 / 22);
+  const drivingKmAvoided = Math.floor(effectiveCo2 / 0.192);
+  const phonesCharged = Math.floor(effectiveCo2 / 0.005); // ~5g CO2 per phone charge
+  const lightbulbHours = Math.floor(effectiveCo2 / 0.01); // ~10g per LED hour
   const plantsGrown = Math.floor(stats.totalPoints / 500);
   const quickLogs = stats.activities.filter((a) => a.isQuickLog).length;
+  const plasticBagsAvoided = Math.floor(effectiveCo2 / 0.033) + stats.activities.filter((a) => a.category === 'waste').length * 4;
+  const waterLitersSaved = Math.floor(effectiveCo2 * 125) + stats.activities.filter((a) => a.category === 'food').length * 150;
+  const leavesGrown = Math.max(2, Math.floor(stats.totalPoints / 18) + stats.activities.length * 2 + 4);
 
   return {
     treesEquivalent,
@@ -198,7 +281,10 @@ export function getImpactSummary(stats: UserStats) {
     lightbulbHours,
     plantsGrown,
     quickLogs,
-    totalCo2Saved: stats.totalCo2SavedKg.toFixed(1),
+    plasticBagsAvoided,
+    waterLitersSaved,
+    leavesGrown,
+    totalCo2Saved: effectiveCo2.toFixed(1),
   };
 }
 
@@ -211,10 +297,11 @@ export function getWeeklySummary(stats: UserStats, prevPlantLevel: number): Week
   const weekAgoStr = weekAgo.toISOString().split('T')[0];
 
   const weekChallenges = stats.completedChallenges.filter((c) => c.date >= weekAgoStr);
-  const weekPoints = weekChallenges.reduce((sum, c) => sum + c.points, 0);
-  const weekCo2Saved = weekChallenges.reduce((sum, c) => {
-    return sum; // simplified — just count challenge-based
-  }, 0);
+  const weekActivities = stats.activities.filter((a) => a.date >= weekAgoStr);
+  const weekPoints = weekChallenges.reduce((sum, c) => sum + c.points, 0) + weekActivities.reduce((sum, a) => sum + (a.isQuickLog ? 15 : 10), 0);
+  
+  const weekCo2Saved = weekActivities.reduce((sum, a) => sum + a.co2Kg, 0) + 
+    weekChallenges.length * 1.2;
 
   const currentLevel = getPlantLevel(stats).level;
   const plantLevelGained = currentLevel > prevPlantLevel;

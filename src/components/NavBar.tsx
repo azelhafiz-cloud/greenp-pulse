@@ -26,7 +26,7 @@ interface NavBarProps {
 }
 
 export default function NavBar({ activeTab, onTabChange }: NavBarProps) {
-  const { theme, toggleTheme, stats } = useApp();
+  const { theme, toggleTheme, stats, atmosphereEnabled, toggleAtmosphere } = useApp();
 
   return (
     <>
@@ -72,7 +72,7 @@ export default function NavBar({ activeTab, onTabChange }: NavBarProps) {
         </nav>
 
         {/* Right controls */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-forest-50 dark:bg-dark-card border border-forest-100 dark:border-dark-border">
             <span className="material-symbols-rounded text-forest-600 dark:text-forest-400" style={{ fontSize: '16px' }}>
               stars
@@ -81,6 +81,21 @@ export default function NavBar({ activeTab, onTabChange }: NavBarProps) {
               {stats.totalPoints.toLocaleString()}
             </span>
           </div>
+
+          <button
+            onClick={toggleAtmosphere}
+            className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${
+              atmosphereEnabled
+                ? 'text-forest-600 dark:text-forest-400 bg-forest-50/80 dark:bg-forest-900/30'
+                : 'text-sage-400 dark:text-sage-600 hover:bg-forest-50 dark:hover:bg-dark-card'
+            }`}
+            title={atmosphereEnabled ? 'Forest Atmosphere: Active' : 'Forest Atmosphere: Paused'}
+            aria-label="Toggle Forest Atmosphere"
+          >
+            <span className="material-symbols-rounded" style={{ fontSize: '19px' }}>
+              {atmosphereEnabled ? 'nature' : 'nature_people'}
+            </span>
+          </button>
 
           <button
             onClick={toggleTheme}
