@@ -205,7 +205,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
           <div className="space-y-4">
             <div>
               <div className="flex justify-between text-xs text-sage-600 dark:text-sage-400 mb-1.5 font-medium">
-                <span>Today's Emissions</span>
+                <span>Today&apos;s Emissions</span>
                 <span className={todayPct > 70 ? 'text-rose-500 font-bold' : 'text-forest-600 dark:text-forest-400'}>
                   {todayCo2.toFixed(1)} / {DAILY_CO2_TARGET_KG} kg
                 </span>

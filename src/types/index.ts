@@ -1,9 +1,11 @@
 // Types for GreenPulse app
 
+export type ActivityCategory = 'transport' | 'food' | 'energy' | 'waste' | 'nature';
+
 export interface EcoActivity {
   id: string;
   date: string; // ISO date string
-  category: 'transport' | 'food' | 'energy' | 'waste';
+  category: ActivityCategory;
   action: string;
   quantity: number;
   unit: string;
@@ -23,7 +25,7 @@ export interface Challenge {
   id: string;
   title: string;
   description: string;
-  category: 'transport' | 'food' | 'energy' | 'waste' | 'nature';
+  category: ActivityCategory;
   points: number;
   icon: string;
   difficulty: 'easy' | 'medium' | 'hard';

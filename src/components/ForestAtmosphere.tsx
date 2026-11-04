@@ -39,6 +39,7 @@ export default function ForestAtmosphere() {
         i % 3 === 0 ? 'leaf' : i % 3 === 1 ? 'mote' : 'firefly';
       list.push({
         id: i,
+        type,
         x: (i * 5.6 + 4) % 96,
         delay: (i * 0.7) % 8,
         duration: 12 + (i % 7) * 2.5,

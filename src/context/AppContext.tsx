@@ -101,6 +101,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       );
       if (daysSince >= 7) setShowWeeklySummary(true);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stats.onboardingComplete]);
 
   const toggleTheme = useCallback(() => {
